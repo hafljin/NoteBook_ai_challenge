@@ -13,7 +13,7 @@ interface CategorySelectorProps {
 }
 
 export function CategorySelector({ 
-  categories, 
+  categories = [], 
   selectedCategoryIds = [], 
   onSelectCategories, 
   showClearOption = true,
@@ -22,7 +22,10 @@ export function CategorySelector({
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const selectedCategories = categories.filter(cat => selectedCategoryIds.includes(cat.id));
+  // より厳密な安全チェック
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const safeSelectedCategoryIds = Array.isArray(selectedCategoryIds) ? selectedCategoryIds : [];
+  const selectedCategories = safeCategories.filter(cat => safeSelectedCategoryIds.includes(cat.id));
 
   const dynamicStyles = StyleSheet.create({
     container: {
@@ -40,13 +43,13 @@ export function CategorySelector({
   const handleCategoryToggle = (categoryId: string) => {
     if (multiple) {
       // 複数選択モード
-      const newSelectedIds = selectedCategoryIds.includes(categoryId)
-        ? selectedCategoryIds.filter(id => id !== categoryId)
-        : [...selectedCategoryIds, categoryId];
+      const newSelectedIds = safeSelectedCategoryIds.includes(categoryId)
+        ? safeSelectedCategoryIds.filter(id => id !== categoryId)
+        : [...safeSelectedCategoryIds, categoryId];
       onSelectCategories(newSelectedIds);
     } else {
       // 単一選択モード
-      onSelectCategories(selectedCategoryIds.includes(categoryId) ? [] : [categoryId]);
+      onSelectCategories(safeSelectedCategoryIds.includes(categoryId) ? [] : [categoryId]);
     }
   };
 
@@ -55,14 +58,14 @@ export function CategorySelector({
   };
 
   const handleRemoveCategory = (categoryId: string) => {
-    const newSelectedIds = selectedCategoryIds.filter(id => id !== categoryId);
+    const newSelectedIds = safeSelectedCategoryIds.filter(id => id !== categoryId);
     onSelectCategories(newSelectedIds);
   };
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       <Text style={[styles.title, dynamicStyles.title]}>
-        Categories {selectedCategoryIds.length > 0 && `(${selectedCategoryIds.length})`}
+        Categories {safeSelectedCategoryIds.length > 0 && `(${safeSelectedCategoryIds.length})`}
       </Text>
       
       {selectedCategories.length > 0 && (
@@ -108,7 +111,7 @@ export function CategorySelector({
             key={category.id}
             style={[
               styles.categoryButton,
-              selectedCategoryIds.includes(category.id) && styles.selectedCategoryButton
+              safeSelectedCategoryIds.includes(category.id) && styles.selectedCategoryButton
             ]}
             onPress={() => handleCategoryToggle(category.id)}
           >

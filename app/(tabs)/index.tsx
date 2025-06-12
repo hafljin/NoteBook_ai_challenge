@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, Alert, useColorScheme, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useNotes } from '@/hooks/useNotes';
 import { useCategories } from '@/hooks/useCategories';
 import { NoteCard } from '@/components/NoteCard';
@@ -16,8 +16,8 @@ export default function NotesScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   
-  const { notes, loading, error, deleteNote } = useNotes();
-  const { categories } = useCategories();
+  const { notes, loading, error, deleteNote, loadNotes } = useNotes();
+  const { categories, loading: categoriesLoading, loadCategories } = useCategories();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -26,6 +26,46 @@ export default function NotesScreen() {
   // 複数選択機能の状態
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
+
+  // フォーカス時にカテゴリーとノートを再読み込み
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCategories();
+      loadNotes();
+    }, [loadCategories, loadNotes])
+  );
+
+  // カテゴリーが変更されたときにノート一覧を更新
+  React.useEffect(() => {
+    if (!categoriesLoading && categories.length > 0) {
+      loadNotes();
+    }
+  }, [categories.length, categoriesLoading, loadNotes]);
+
+  // 選択されたカテゴリーが削除された場合、選択をクリア
+  React.useEffect(() => {
+    if (!categoriesLoading && categories.length >= 0) {
+      const validCategoryIds = selectedCategoryIds.filter(id => 
+        categories.some(cat => cat.id === id)
+      );
+      if (validCategoryIds.length !== selectedCategoryIds.length) {
+        console.log('Clearing invalid category selections:', selectedCategoryIds.filter(id => !categories.some(cat => cat.id === id)));
+        setSelectedCategoryIds(validCategoryIds);
+      }
+    }
+  }, [categories, selectedCategoryIds, categoriesLoading]);
+
+  // カテゴリーが削除された場合の追加チェック
+  React.useEffect(() => {
+    if (!categoriesLoading) {
+      const currentCategoryIds = categories.map(cat => cat.id);
+      const invalidSelections = selectedCategoryIds.filter(id => !currentCategoryIds.includes(id));
+      if (invalidSelections.length > 0) {
+        console.log('Found invalid category selections, clearing:', invalidSelections);
+        setSelectedCategoryIds(selectedCategoryIds.filter(id => currentCategoryIds.includes(id)));
+      }
+    }
+  }, [categories, selectedCategoryIds, categoriesLoading]);
 
   const filteredNotes = useMemo(() => {
     let filtered = notes;
@@ -244,13 +284,16 @@ export default function NotesScreen() {
             placeholder="Search notes, categories..."
           />
 
-          <CategorySelector
-            categories={categories}
-            selectedCategoryIds={selectedCategoryIds}
-            onSelectCategories={setSelectedCategoryIds}
-            showClearOption={true}
-            multiple={true}
-          />
+          {!categoriesLoading && (
+            <CategorySelector
+              key={`categories-${categories.length}-${categories.map(c => c.id).join('-')}`}
+              categories={categories}
+              selectedCategoryIds={selectedCategoryIds}
+              onSelectCategories={setSelectedCategoryIds}
+              showClearOption={true}
+              multiple={true}
+            />
+          )}
         </>
       )}
 

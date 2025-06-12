@@ -82,6 +82,28 @@ export class NoteStorage {
     }
   }
 
+  static async clearCategoryFromNotes(categoryId: string): Promise<boolean> {
+    try {
+      const notes = await this.getAllNotes();
+      const updatedNotes = notes.map(note => {
+        if (note.categoryId === categoryId) {
+          return {
+            ...note,
+            categoryId: undefined,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return note;
+      });
+      
+      await AsyncStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(updatedNotes));
+      return true;
+    } catch (error) {
+      console.error('Error clearing category from notes:', error);
+      return false;
+    }
+  }
+
   static async getNoteById(id: string): Promise<Note | null> {
     try {
       const notes = await this.getAllNotes();

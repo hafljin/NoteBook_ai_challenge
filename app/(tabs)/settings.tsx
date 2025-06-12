@@ -3,13 +3,15 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, L
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Info, Heart, Mail, Shield, Book, Tag, Plus, Edit3, Trash2, X } from 'lucide-react-native';
 import { useCategories } from '@/hooks/useCategories';
+import { useNotes } from '@/hooks/useNotes';
 import { Category } from '@/types/Note';
 import { CategoryTag } from '@/components/CategoryTag';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { categories, createCategory, updateCategory, deleteCategory } = useCategories();
+  const { categories, loading: categoriesLoading, createCategory, updateCategory, deleteCategory } = useCategories();
+  const { clearCategoryFromNotes, loadNotes } = useNotes();
   
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -52,7 +54,7 @@ export default function SettingsScreen() {
   const handleDeleteCategory = (category: Category) => {
     Alert.alert(
       'Delete Category',
-      `Are you sure you want to delete "${category.name}"? Notes in this category will not be deleted.`,
+      `Are you sure you want to delete "${category.name}"? Notes in this category will have their category removed.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -60,7 +62,16 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // まずノートからカテゴリーをクリア
+              await clearCategoryFromNotes(category.id);
+              // 次にカテゴリーを削除
               await deleteCategory(category.id);
+              // ノート一覧を強制的に更新
+              setTimeout(async () => {
+                await loadNotes();
+              }, 100);
+              // 成功メッセージを表示
+              Alert.alert('Success', 'Category deleted successfully');
             } catch (error) {
               Alert.alert('Error', 'Failed to delete category');
             }
@@ -142,7 +153,7 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
           
-          {categories.map((category) => (
+          {!categoriesLoading && categories.map((category) => (
             <View key={category.id} style={[styles.categoryItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}>
               <View style={styles.categoryContent}>
                 <CategoryTag category={category} size="medium" />

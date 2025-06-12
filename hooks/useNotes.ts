@@ -67,6 +67,28 @@ export function useNotes() {
     }
   }, []);
 
+  const clearCategoryFromNotes = useCallback(async (categoryId: string) => {
+    try {
+      setError(null);
+      const success = await NoteStorage.clearCategoryFromNotes(categoryId);
+      if (success) {
+        setNotes(prev => prev.map(note => 
+          note.categoryId === categoryId 
+            ? { ...note, categoryId: undefined, updatedAt: new Date().toISOString() }
+            : note
+        ));
+        setTimeout(async () => {
+          await loadNotes();
+        }, 50);
+      }
+      return success;
+    } catch (err) {
+      setError('Failed to clear category from notes');
+      console.error('Error clearing category from notes:', err);
+      throw err;
+    }
+  }, [loadNotes]);
+
   useEffect(() => {
     loadNotes();
   }, [loadNotes]);
@@ -79,5 +101,6 @@ export function useNotes() {
     createNote,
     updateNote,
     deleteNote,
+    clearCategoryFromNotes,
   };
 }

@@ -25,7 +25,7 @@ export default function EditorScreen() {
   
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { createNote, updateNote, deleteNote } = useNotes();
-  const { categories, getCategoryById } = useCategories();
+  const { categories, loading: categoriesLoading, getCategoryById } = useCategories();
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -245,13 +245,15 @@ export default function EditorScreen() {
         />
 
         {/* Category Selector */}
-        <CategorySelector
-          categories={categories}
-          selectedCategoryIds={categoryId ? [categoryId] : []}
-          onSelectCategories={(ids) => setCategoryId(ids.length > 0 ? ids[0] : undefined)}
-          showClearOption={true}
-          multiple={false}
-        />
+        {!categoriesLoading && (
+          <CategorySelector
+            categories={categories}
+            selectedCategoryIds={categoryId ? [categoryId] : []}
+            onSelectCategories={(ids) => setCategoryId(ids.length > 0 ? ids[0] : undefined)}
+            showClearOption={true}
+            multiple={false}
+          />
+        )}
 
         {/* Content Input */}
         <TextInput
